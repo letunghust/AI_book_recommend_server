@@ -1,4 +1,4 @@
 Flask
 flask-cors
-pickle5
+pickle
 numpy
