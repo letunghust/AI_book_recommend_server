@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 import pickle
 import numpy as np
 from flask_cors import CORS 
+import json
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}) # cho phep truy cap tu client
@@ -55,6 +56,16 @@ def recommend_books():
     # Kiểm tra xem cuốn sách đầu vào có tồn tại trong dữ liệu hay không
     if user_input in data['bookTitle'].values:
         recommendations = recommend1(user_input, data)
+        if isinstance(recommendations, str):
+            try:
+                recommendations = json.loads(recommendations)
+            except json.JSONDecodeError:
+                recommendations = []
+        
+        # Đảm bảo recommendations là một list
+        if not isinstance(recommendations, list):
+            recommendations = [recommendations] if recommendations else []
+        print("Type of recommendations after processing:", type(recommendations))
         return jsonify(recommendations)
     else:
         # Nếu cuốn sách đầu vào không tồn tại, trả về danh sách trống
