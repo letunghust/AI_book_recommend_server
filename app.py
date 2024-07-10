@@ -3,6 +3,8 @@ import pickle
 import numpy as np
 from flask_cors import CORS 
 import json
+import pandas as pd
+from surprise import SVD, Dataset, Reader
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}) # cho phep truy cap tu client
@@ -65,15 +67,55 @@ def recommend_books():
         # Đảm bảo recommendations là một list
         if not isinstance(recommendations, list):
             recommendations = [recommendations] if recommendations else []
-        print("Type of recommendations after processing:", type(recommendations))
+        # print("Type of recommendations after processing:", type(recommendations))
         return jsonify(recommendations)
     else:
         # Nếu cuốn sách đầu vào không tồn tại, trả về danh sách trống
         return jsonify([])
 
+# MODEL SVD
+def load_model():
+    with open('svd_model.pkl', 'rb') as f:
+        model, trainset = pickle.load(f)
+    return model, trainset
+
+model, trainset = load_model()
+
+# Generate recommendations using the loaded model
+def generate_recommendationsSVD(userID, get_recommend=10):
+    ''' This function generates "get_recommend" number of book recommendations 
+        using Singular Value Decomposition. The function needs as input two 
+        different parameters:
+        (1) userID i.e., userID for which recommendations need to be generated 
+        (2) get_recommend i.e., number of recommendations to generate for the userID
+    '''
+    
+    # Generate predictions for all pairs (user, item) that are not in the training set
+    testset = trainset.build_anti_testset()
+    predictions = model.test(testset)
+    predictions_df = pd.DataFrame(predictions)
+    
+    # Filter predictions for the given user and get the top recommendations
+    predictions_userID = predictions_df[predictions_df['uid'] == userID].sort_values(by="est", ascending=False).head(get_recommend)
+    recommendations = list(predictions_userID['iid'])
+    
+    return recommendations
+
+@app.route('/api/recommendSVD', methods=['GET'])
+def recommend():
+    user_id = request.args.get('user_id', type=int)
+    if user_id is None:
+        return jsonify({'error': 'user_id parameter is required'}), 400
+    
+    recommendations = generate_recommendationsSVD(userID=user_id)
+    
+    return jsonify({'user_id': user_id, 'recommendations': recommendations})
+
+# run in developer environment
 # if __name__ == '__main__':
 #     app.run(debug=True, port=5001)
 
+# run in deployment environment
 if __name__ == "__main__":
     from waitress import serve
     serve(app, host="0.0.0.0", port=5001)
