@@ -81,14 +81,10 @@ def load_model():
 
 model, trainset = load_model()
 
+rating = pd.read_csv('cleaned_ratings.csv')
+
 # Generate recommendations using the loaded model
 def generate_recommendationsSVD(userID, get_recommend=10):
-    ''' This function generates "get_recommend" number of book recommendations 
-        using Singular Value Decomposition. The function needs as input two 
-        different parameters:
-        (1) userID i.e., userID for which recommendations need to be generated 
-        (2) get_recommend i.e., number of recommendations to generate for the userID
-    '''
     
     # Generate predictions for all pairs (user, item) that are not in the training set
     testset = trainset.build_anti_testset()
@@ -97,8 +93,23 @@ def generate_recommendationsSVD(userID, get_recommend=10):
     
     # Filter predictions for the given user and get the top recommendations
     predictions_userID = predictions_df[predictions_df['uid'] == userID].sort_values(by="est", ascending=False).head(get_recommend)
-    recommendations = list(predictions_userID['iid'])
+    # recommendations = list(predictions_userID['iid'])
     
+    # Remove duplicate book recommendations
+    predictions_userID = predictions_userID.drop_duplicates(subset=['iid']).head(get_recommend)
+    
+    # Merge with the original rating dataframe to get book titles and image URLs
+    recommendations_df = predictions_userID.merge(rating, left_on='iid', right_on='Book-Title')[['Book-Title', 'Image-URL-M']]
+    
+     # Drop duplicates
+    recommendations_df = recommendations_df.drop_duplicates(subset=['Book-Title'])
+
+    # Ensure we only return the number of recommendations requested
+    recommendations_df = recommendations_df.head(get_recommend)
+
+    # Convert to a list of tuples (title, image_url)
+    recommendations = list(recommendations_df.itertuples(index=False, name=None))
+
     return recommendations
 
 @app.route('/api/recommendSVD', methods=['GET'])
