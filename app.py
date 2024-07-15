@@ -1,7 +1,29 @@
+import subprocess
+import sys
+
+# Function to install packages
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# List of packages to install
+packages = [
+    "flask",
+    "flask-cors",
+    "numpy",
+    "pandas",
+    "scikit-surprise"
+]
+
+for package in packages:
+    try:
+        __import__(package)
+    except ImportError:
+        install(package)
+
 from flask import Flask, jsonify, request
 import pickle
 import numpy as np
-from flask_cors import CORS 
+from flask_cors import CORS
 import json
 import pandas as pd
 from surprise import SVD, Dataset, Reader
